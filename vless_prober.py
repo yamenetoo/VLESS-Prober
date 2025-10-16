@@ -10,11 +10,13 @@ from typing import Dict, List, Optional, Tuple
 from telegram import Bot
 
 # Telegram Bot Token (replace with your token from BotFather)
-TELEGRAM_BOT_TOKEN = '8125800145:AAF6kcNt2cVn0FWrH20CmBYArj5Sem-B-h0'
+import os
+
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
 # Chat ID where the bot will send messages (you can use your user ID or a group ID)
 CHAT_ID = "-1003051753052"
-
-'1273483218'
+ 
 
 # URL to fetch the subscription list
 SUB_URL = "https://raw.githubusercontent.com/hamedp-71/Sub_Checker_Creator/refs/heads/main/final.txt"
