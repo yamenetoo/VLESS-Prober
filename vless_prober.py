@@ -8,8 +8,9 @@ import time
 import urllib.parse
 from typing import Dict, List, Optional, Tuple
 from telegram import Bot
+import asyncio
 
-# Telegram Bot Token (replace with your token from BotFather)
+ 
 import os
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -204,4 +205,6 @@ async def main():
             print(f"Server {n['raw']} failed to connect.")
 
 # If running in Jupyter, use the following to run the main function:
-await main()
+# await main()
+if __name__ == "__main__":
+    asyncio.run(main())
