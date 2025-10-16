@@ -1,1 +1,32 @@
+name: Run VLESS Prober
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # This will run the workflow every day at midnight (UTC)
+  workflow_dispatch:  # This allows you to manually trigger the workflow from the GitHub UI
+  push:
+    branches:
+      - main  # This will trigger the workflow on every push to the main branch
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest  # Use the latest Ubuntu runner
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2  # Checkout the code
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'  # Set the Python version to use (you can change this to your preferred version)
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt  # Install the required dependencies from requirements.txt
+
+    - name: Run VLESS Prober script
+      run: |
+        python vless_prober.py  # Run your Python script
 
