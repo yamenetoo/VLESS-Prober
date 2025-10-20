@@ -10,26 +10,26 @@ on:
 
 jobs:
   run-script:
-    runs-on: ubuntu-latest  # Use the latest Ubuntu runner
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4  # Updated to v4
+      uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v4  # Updated to v4
+      uses: actions/setup-python@v4
       with:
-        python-version: '3.8'  # Set the Python version (can be modified as needed)
+        python-version: '3.8'
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install python-telegram-bot  # Install required package
+        pip install python-telegram-bot
 
     - name: Run VLESS Prober script
       env:
-        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}  # Use the GitHub secret
-        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}  # Add chat ID secret
-        SUBSCRIPTION_URL: ${{ secrets.SUBSCRIPTION_URL }}  # Add subscription URL secret
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        SUBSCRIPTION_URL: ${{ secrets.SUBSCRIPTION_URL }}
       run: |
-        python vless_prober.py  # Run your script
+        python vless_prober.py
