@@ -206,28 +206,36 @@ async def main():
     print(f"Found {len(nodes)} VLESS nodes. Probing (timeout {TIMEOUT}s each)...\n")
     
     working_servers = []
+    failed_servers = []
     
-    for n in nodes:
+    for i, n in enumerate(nodes):
+        print(f"Checking server {i+1}/{len(nodes)}: {n['name'] or n['host']}")
         result = probe_node(n)
+        
         if result["status"] == "ok":
             working_servers.append(n["raw"])
             print(f"✓ Working server: {n['name'] or n['host']}")
+            
+            # Send immediately
+            try:
+                await send_telegram_message(f"✅ *Working Server {i+1}/{len(nodes)}:*\n`{n['raw']}`")
+                print(f"✓ Sent to Telegram")
+            except Exception as e:
+                print(f"✗ Failed to send to Telegram: {e}")
+                
         else:
+            failed_servers.append(f"{n['name'] or n['host']} - {result['detail']}")
             print(f"✗ Failed server: {n['name'] or n['host']} - {result['detail']}")
 
-    # Send all working servers to Telegram
+    # Final summary
     if working_servers:
-        message = "✅ *Working VLESS Servers:*\n\n" + "\n".join(working_servers)
-        # Limit message length to avoid Telegram's 4096 character limit
-        if len(message) > 4000:
-            message = message[:4000] + "\n\n... (truncated due to length)"
-        
-        await send_telegram_message(message)
-        print(f"\n✓ Sent {len(working_servers)} working servers to Telegram")
+        summary = f"🎯 *Scan Complete!*\nFound {len(working_servers)} working servers out of {len(nodes)} total."
+        await send_telegram_message(summary)
     else:
-        message = "❌ No working VLESS servers found in this check."
-        await send_telegram_message(message)
-        print(f"\n✗ No working servers found to send")
+        summary = f"❌ *Scan Complete!*\nNo working servers found out of {len(nodes)} total."
+        await send_telegram_message(summary)
+    
+    print(f"\n✓ Final: {len(working_servers)} working, {len(failed_servers)} failed")
 
 if __name__ == "__main__":
     asyncio.run(main())
