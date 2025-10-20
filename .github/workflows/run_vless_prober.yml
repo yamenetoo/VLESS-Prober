@@ -2,7 +2,7 @@ name: Run VLESS Prober
 
 on:
   schedule:
-    - cron: '*/10 * * * *'  # Run every 10 minutes
+    - cron: '0 */6 * * *'  # Every 6 hours (4x daily)
   workflow_dispatch:  # Allows manual trigger
   push:
     branches:
