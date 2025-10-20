@@ -4,32 +4,22 @@ import re
 import socket
 import ssl
 import sys
-import time
 import urllib.parse
 from typing import Dict, List, Optional, Tuple
 from telegram import Bot
 import asyncio
 
- 
-import os
-
+# Get credentials from environment variables
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "-1003051753052")
+SUB_URL = os.getenv("SUBSCRIPTION_URL", "https://raw.githubusercontent.com/hamedp-71/Sub_Checker_Creator/refs/heads/main/final.txt")
+TIMEOUT = int(os.getenv("TIMEOUT", "8"))
 
-# Chat ID where the bot will send messages (you can use your user ID or a group ID)
-CHAT_ID = "-1003051753052"
- 
-
-# URL to fetch the subscription list
-SUB_URL = "https://raw.githubusercontent.com/hamedp-71/Sub_Checker_Creator/refs/heads/main/final.txt"
-TIMEOUT = 8
-
-# ---------- Fetch ----------
 def fetch_text(url: str) -> str:
     import urllib.request
     with urllib.request.urlopen(url, timeout=20) as resp:
         return resp.read().decode("utf-8", errors="replace")
 
-# ---------- Parse VLESS ----------
 def parse_vless_uri(uri: str) -> Optional[Dict]:
     if not uri.lower().startswith("vless://"):
         return None
@@ -54,7 +44,7 @@ def parse_vless_uri(uri: str) -> Optional[Dict]:
         alpn_list = [a.strip() for a in alpn.split(",") if a.strip()] if alpn else []
         name = urllib.parse.unquote(u.fragment or "")
         return {
-            "raw": uri.strip(),  # Keep the full vless:// URL here
+            "raw": uri.strip(),
             "uuid": uuid,
             "host": host,
             "port": port or (443 if sec in ("tls","reality") or net in ("ws","grpc") else 80),
@@ -72,7 +62,6 @@ def parse_vless_uri(uri: str) -> Optional[Dict]:
 def extract_vless_links(text: str) -> List[str]:
     return re.findall(r"vless://[^\s]+", text, flags=re.IGNORECASE)
 
-# ---------- Probes ----------
 def tcp_connect(host: str, port: int) -> Tuple[bool, str]:
     try:
         with socket.create_connection((host, port), timeout=TIMEOUT):
@@ -126,7 +115,6 @@ def ws_upgrade(host: str, port: int, secure: bool, sni: Optional[str], host_head
     except Exception as e:
         return False, f"ws_err:{type(e).__name__}"
 
-# ---------- Decide probe per node ----------
 def probe_node(n: Dict) -> Dict:
     host, port = n["host"], n["port"]
     result = {"name": n["name"], "host": host, "port": port, "network": n["network"], "security": n["security"], "status": "fail", "detail": ""}
@@ -170,13 +158,22 @@ def probe_node(n: Dict) -> Dict:
     result["detail"] = det
     return result
 
-# ---------- Send message via Telegram Bot ----------
 async def send_telegram_message(message: str):
+    if not TELEGRAM_BOT_TOKEN:
+        print("TELEGRAM_BOT_TOKEN not set, skipping Telegram message")
+        return
+        
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
-    await bot.send_message(chat_id=CHAT_ID, text=message)
+    try:
+        await bot.send_message(chat_id=CHAT_ID, text=f"`{message}`", parse_mode="Markdown")
+    except Exception as e:
+        print(f"Failed to send Telegram message: {e}")
 
-# ---------- Main ----------
 async def main():
+    # Validate environment variables
+    if not TELEGRAM_BOT_TOKEN:
+        print("Warning: TELEGRAM_BOT_TOKEN environment variable not set")
+    
     try:
         text = fetch_text(SUB_URL)
     except Exception as e:
@@ -193,18 +190,23 @@ async def main():
 
     print(f"Found {len(nodes)} VLESS nodes. Probing (timeout {TIMEOUT}s each)...\n")
     
-    # For each node, probe and send results to Telegram with the full `vless://` URL
+    working_servers = []
+    
     for n in nodes:
         result = probe_node(n)
         if result["status"] == "ok":
-            # Send only the full line (vless:// URL) of the working server
-            message = f"{n['raw']}"  # Only send the line itself
-            await send_telegram_message(message)
-            print(f"Sent details for server {n['raw']} to Telegram.")
+            working_servers.append(n["raw"])
+            print(f"✓ Working server: {n['raw']}")
         else:
-            print(f"Server {n['raw']} failed to connect.")
+            print(f"✗ Failed server: {n['raw']} - {result['detail']}")
 
-# If running in Jupyter, use the following to run the main function:
-# await main()
+    # Send all working servers to Telegram
+    if working_servers:
+        message = "\n".join(working_servers)
+        await send_telegram_message(message)
+        print(f"\nSent {len(working_servers)} working servers to Telegram")
+    else:
+        print("\nNo working servers found to send")
+
 if __name__ == "__main__":
     asyncio.run(main())
