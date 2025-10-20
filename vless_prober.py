@@ -163,21 +163,33 @@ async def send_telegram_message(message: str):
         print("TELEGRAM_BOT_TOKEN not set, skipping Telegram message")
         return
         
-    bot = Bot(token=TELEGRAM_BOT_TOKEN)
     try:
-        await bot.send_message(chat_id=CHAT_ID, text=f"`{message}`", parse_mode="Markdown")
+        bot = Bot(token=TELEGRAM_BOT_TOKEN)
+        await bot.send_message(chat_id=CHAT_ID, text=message, parse_mode="Markdown")
+        print(f"✓ Successfully sent message to Telegram")
     except Exception as e:
-        print(f"Failed to send Telegram message: {e}")
+        print(f"✗ Failed to send Telegram message: {e}")
 
 async def main():
     # Validate environment variables
     if not TELEGRAM_BOT_TOKEN:
         print("Warning: TELEGRAM_BOT_TOKEN environment variable not set")
     
+    # Validate SUBSCRIPTION_URL
+    if not SUB_URL or SUB_URL.strip() == "":
+        print("Error: SUBSCRIPTION_URL environment variable is not set or empty")
+        sys.exit(1)
+    
     try:
+        print(f"Fetching subscription from: {SUB_URL}")
         text = fetch_text(SUB_URL)
+        print("✓ Successfully fetched subscription data")
     except Exception as e:
-        print(f"Failed to fetch subscription: {e}")
+        error_msg = f"Failed to fetch subscription from {SUB_URL}: {e}"
+        print(error_msg)
+        # Try to send error to Telegram if token is available
+        if TELEGRAM_BOT_TOKEN:
+            await send_telegram_message(f"❌ {error_msg}")
         sys.exit(1)
 
     links = extract_vless_links(text)
@@ -185,7 +197,10 @@ async def main():
     nodes = [n for n in nodes if n]
 
     if not nodes:
-        print("No VLESS links found.")
+        message = "No VLESS links found in the subscription."
+        print(message)
+        if TELEGRAM_BOT_TOKEN:
+            await send_telegram_message(message)
         return
 
     print(f"Found {len(nodes)} VLESS nodes. Probing (timeout {TIMEOUT}s each)...\n")
@@ -196,17 +211,23 @@ async def main():
         result = probe_node(n)
         if result["status"] == "ok":
             working_servers.append(n["raw"])
-            print(f"✓ Working server: {n['raw']}")
+            print(f"✓ Working server: {n['name'] or n['host']}")
         else:
-            print(f"✗ Failed server: {n['raw']} - {result['detail']}")
+            print(f"✗ Failed server: {n['name'] or n['host']} - {result['detail']}")
 
     # Send all working servers to Telegram
     if working_servers:
-        message = "\n".join(working_servers)
+        message = "✅ *Working VLESS Servers:*\n\n" + "\n".join(working_servers)
+        # Limit message length to avoid Telegram's 4096 character limit
+        if len(message) > 4000:
+            message = message[:4000] + "\n\n... (truncated due to length)"
+        
         await send_telegram_message(message)
-        print(f"\nSent {len(working_servers)} working servers to Telegram")
+        print(f"\n✓ Sent {len(working_servers)} working servers to Telegram")
     else:
-        print("\nNo working servers found to send")
+        message = "❌ No working VLESS servers found in this check."
+        await send_telegram_message(message)
+        print(f"\n✗ No working servers found to send")
 
 if __name__ == "__main__":
     asyncio.run(main())
